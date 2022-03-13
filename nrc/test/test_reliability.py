@@ -15,8 +15,8 @@ class TestConvolution(unittest.TestCase):
         self.example_gids = np.array([1, 2, 3, 4, 5])
         self.example_extended_spike_trains = np.clip(1*np.abs(np.random.normal(1, size=500)), 0, 100)
         self.example_extended_spike_trains = np.stack(
-            [np.concatenate([i * np.ones(100) for i in range(1, 6)]), self.example_extended_spike_trains]
-        ).T
+            [self.example_extended_spike_trains, np.concatenate([i * np.ones(100) for i in range(1, 6)])]
+        )
         self.example_t_stop = 100 * qt.ms
         self.example_t_start = 0 * qt.ms
 
@@ -75,7 +75,7 @@ class TestReliability(unittest.TestCase):
         self.example_gids = np.array([1, 2, 3, 4, 5])
         self.example_extended_spike_trains = np.clip(1*np.abs(np.random.normal(1, size=500)), 0, 100)
         self.example_extended_spike_trains = np.stack(
-            [np.concatenate([i * np.ones(100) for i in range(1, 6)]), self.example_extended_spike_trains]
+            [self.example_extended_spike_trains, np.concatenate([i * np.ones(100) for i in range(1, 6)])]
         ).T
         self.example_t_stop = 100 * qt.ms
         self.example_t_start = 0 * qt.ms

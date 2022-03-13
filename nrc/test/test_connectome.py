@@ -12,7 +12,7 @@ class TestConnectomeInstance(unittest.TestCase):
         self.unlink_targets = []
         self.example_connectome = np.array([[1, 2], [1, 2]])
         self.example_ndata = pd.DataFrame([1, 2, 3])
-        self.example_st = np.array([[1, 2, 1, 2, 1, 2, 1, 2], [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]]).T
+        self.example_st = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [1, 2, 1, 2, 1, 2, 1, 2]]).T
         self.example_t_start = 0 * qt.s
         self.example_t_stop = 1 * qt.s
         self.example_gids = np.array([1, 2])
@@ -67,7 +67,7 @@ class TestConnectomeInstance(unittest.TestCase):
 class TestSpikeTrainInstance(unittest.TestCase):
     def setUp(self) -> None:
         self.unlink_targets = []
-        self.example_st = np.array([[1, 2, 1, 2, 1, 2, 1, 2], [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]]).T
+        self.example_st = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [1, 2, 1, 2, 1, 2, 1, 2]]).T
         self.example_t_start = 0 * qt.s
         self.example_t_stop = 1 * qt.s
         self.example_gids = np.array([1, 2])
@@ -106,7 +106,7 @@ class TestSpikeTrainInstance(unittest.TestCase):
 class TestSimulationInstance(unittest.TestCase):
     def setUp(self) -> None:
         self.unlink_targets = []
-        self.example_st = np.array([[1, 2, 1, 2, 1, 2, 1, 2], [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]]).T
+        self.example_st = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [1, 2, 1, 2, 1, 2, 1, 2]]).T
         self.example_t_start = 0 * qt.s
         self.example_t_stop = 1 * qt.s
         self.example_gids = np.array([1, 2])

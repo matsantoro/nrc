@@ -13,7 +13,7 @@ import nrc.reliability
 from nrc.config import registry_property
 from nrc.reliability import convolve_with_kernel
 import pickle
-import tqdm
+from tqdm import tqdm
 
 
 def autosave_method(method):
@@ -95,7 +95,7 @@ class SpikeTrainsCollection:
             return self.neo_spike_trains
         else:
             self.neo_spike_trains = [
-                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 0] == gid][:, 1],
+                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == gid][:, 0],
                                t_start=self.t_start, t_stop=self.t_stop, units=qt.ms)
                 for gid in self.gids
             ]
