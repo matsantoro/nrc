@@ -13,6 +13,7 @@ import nrc.reliability
 from nrc.config import registry_property
 from nrc.reliability import convolve_with_kernel
 import pickle
+import tqdm
 
 
 def autosave_method(method):
@@ -194,7 +195,7 @@ class Simulation:
     @autosave_method
     def gk_rel_scores(self, time_bin: Union[int, qt.quantity.Quantity], sigma: Union[int, qt.quantity.Quantity]):
         convolved_sts = self.convolve_with_gk(time_bin, sigma)
-        return [nrc.reliability.cosine_reliability(convolved_sts[:, i, :]) for i in range(len(self.gids))]
+        return [nrc.reliability.cosine_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
 
 
 class Connectome:
