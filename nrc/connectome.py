@@ -194,7 +194,7 @@ class Simulation:
 
     @autosave_method
     def gk_rel_scores(self, time_bin: Union[int, qt.quantity.Quantity], sigma: Union[int, qt.quantity.Quantity]):
-        convolved_sts = self.convolve_with_gk(time_bin, sigma)
+        convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma)
         return [nrc.reliability.cosine_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
 
 
