@@ -2,7 +2,6 @@ from typing import List
 
 import elephant.kernels
 import neo
-import numpy as np
 import quantities as qt
 from elephant.conversion import BinnedSpikeTrain
 from elephant.kernels import GaussianKernel
@@ -20,7 +19,12 @@ from scipy.ndimage import convolve1d
 import numpy as np
 
 
-def _normalize(matrix):
+def _normalize(matrix: np.ndarray):
+    """
+    Normalizes matrix by dividing by its diagonal values.
+    :param matrix: matrix to normalize
+    :return nmatrix: normalized matrix.
+    """
     variances = np.sqrt(np.diag(matrix))
     m = (matrix / np.expand_dims(variances,0)) / np.expand_dims(variances,1)
     return np.nan_to_num(m)
@@ -59,13 +63,24 @@ def average_cosine_distance(traces: np.array) -> float:
 
 
 def cosine_matrix(traces: np.array) -> np.ndarray:
+    """
+    Cosine similarity matrix of given signals.
+
+    :param traces: The signals to compute the cosine similarity of.
+    :return s_matrix: Similarity matrix of the signals.
+    """
     similarity_matrix = np.dot(traces, traces.T)
     correlation_matrix = _normalize(similarity_matrix)
     return correlation_matrix
 
 
 class ReliabilityScore:
-    def __init__(self, seed_correlation_matrix):
+    def __init__(self, seed_correlation_matrix: np.ndarray):
+        """
+        Interface class to work with reliability scores. Hosts original matrix of similarity of seed pairs.
+
+        :param seed_correlation_matrix: matrix of seed pair similarity.
+        """
         self.n_seeds = seed_correlation_matrix.shape[0]
         correlations = seed_correlation_matrix[
             np.triu_indices(self.n_seeds, 1)
@@ -79,7 +94,15 @@ def get_kernel_reliability(
     spike_trains: List[neo.SpikeTrain],
     binsize: qt.quantity.Quantity = 1.0 * qt.ms,
     sigma: qt.quantity.Quantity = 1.0 * qt.ms,
-):
+) -> ReliabilityScore:
+    """
+    Gaussian kernel reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param binsize: bin size to bin the spike trains with
+    :param sigma: sigma of the gaussian kernel to use.
+    :return score: ReliabilityScore instance of the spike trains.
+    """
     binned_spike_trains = BinnedSpikeTrain(
         spike_trains,
         t_start=spike_trains[0].t_start,
@@ -92,7 +115,7 @@ def get_kernel_reliability(
         binned_spike_trains.to_array().astype(float), kernel_values, axis=1
     )
     seed_correlation_matrix = cosine_matrix(convolved_signals)
-    return reliability_score(seed_correlation_matrix)
+    return ReliabilityScore(seed_correlation_matrix)
 
 
 def get_kernel_values(kernel, binsize):
@@ -126,7 +149,7 @@ def get_cc_reliability(
                     cross_correlation_coefficient=True,
                 )[0]
             )
-    return reliability_score(matrix)
+    return ReliabilityScore(matrix)
 
 
 def get_vr_reliability(
@@ -137,7 +160,7 @@ def get_vr_reliability(
     distance = van_rossum_distance(spike_trains, time_constant)
     if convert_to_similarity:
         distance = 1 / (1 + distance)
-    return reliability_score(distance)
+    return ReliabilityScore(distance)
 
 
 def get_vp_reliability(
@@ -148,7 +171,7 @@ def get_vp_reliability(
     distance = victor_purpura_distance(spike_trains, 1 / time_constant)
     if convert_to_similarity:
         distance = 1 / (1 + distance)
-    return reliability_score(distance)
+    return ReliabilityScore(distance)
 
 
 def get_stt_reliability(
@@ -178,7 +201,7 @@ def get_cor_reliability(
         bin_size=binsize,
     )
     seed_correlation_matrix = corrcoef(binned_spike_trains)
-    return reliability_score(seed_correlation_matrix)
+    return ReliabilityScore(seed_correlation_matrix)
 
 
 def get_cos_reliability(
@@ -192,7 +215,7 @@ def get_cos_reliability(
         bin_size=binsize,
     )
     seed_correlation_matrix = cosine_matrix(binned_spike_trains.to_array())
-    return reliability_score(seed_correlation_matrix)
+    return ReliabilityScore(seed_correlation_matrix)
 
 
 def get_kruskal_reliability(
@@ -212,7 +235,7 @@ def get_kruskal_reliability(
         binned_spike_trains.to_array().astype(float), kernel_values, axis=1
     )
     seed_correlation_matrix = pearson_matrix(convolved_signals)
-    return reliability_score(seed_correlation_matrix)
+    return ReliabilityScore(seed_correlation_matrix)
 
 
 def pearson_reliability(
