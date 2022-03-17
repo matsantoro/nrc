@@ -161,6 +161,9 @@ class SpikeTrainsCollection:
         """
         return self.get_number_of_spikes() / (self.t_stop - self.t_start)
 
+    def unroot(self):
+        self.root = None
+
 
 class Simulation:
     seeds = registry_property('seeds')
@@ -299,6 +302,10 @@ class Simulation:
             [seed.get_firing_rates().rescale(1 / qt.ms) for seed in self.seeds]
         ), axis=0) * (1 / qt.ms)
 
+    def unroot(self):
+        self.root = None
+        for seed in self.seeds:
+            seed.unroot()
 
 class Connectome:
     adjacency = registry_property('adjacency', )
@@ -368,3 +375,8 @@ class Connectome:
 
             if gids is not None:
                 self.gids = gids
+
+    def unroot(self):
+        self.root = None
+        for sim in self.simulations:
+            sim.unroot()
