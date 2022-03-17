@@ -164,6 +164,8 @@ class SpikeTrainsCollection:
     def unroot(self):
         self.spikes_array
         self.gids
+        self.t_start
+        self.t_stop
         self.root = None
 
 
@@ -384,6 +386,7 @@ class Connectome:
         self.simulations
         self.gids
         self.adjacency
+        self.neuron_data
         self.root = None
         for sim in self.simulations:
             sim.unroot()
