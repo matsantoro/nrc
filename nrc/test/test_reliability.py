@@ -90,6 +90,16 @@ class TestReliability(unittest.TestCase):
         self.assertAlmostEqual(scores[0].value, 1)
         self.assertAlmostEqual(scores[1].value, 1)
 
+    def test_gk_pearson_reliability_computation(self):
+        target_sim = test_data_path / 'sim2'
+        self.unlink_targets.append(target_sim)
+        example_sts = SpikeTrainsCollection(None, self.example_extended_spike_trains, self.example_t_start,
+                                            self.example_t_stop, self.example_gids)
+        s = Simulation(target_sim, [example_sts]*3, example_sts.gids)
+        scores = s.gk_rel_pearson_scores(time_bin=5, sigma=10)
+        self.assertAlmostEqual(scores[0].value, 1)
+        self.assertAlmostEqual(scores[1].value, 1)
+
     def tearDown(self) -> None:
         for target in self.unlink_targets:
             shutil.rmtree(target, ignore_errors=True)

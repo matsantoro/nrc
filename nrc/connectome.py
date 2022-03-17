@@ -47,17 +47,17 @@ class SpikeTrainsCollection:
             # helper dictionary. See config.registry_property for details.
             self.property_registry = {
                 'spikes_array': [partial(np.load, file=self.spikes_array_path),
-                                  lambda x: np.save(arr=x, file=str(self.spikes_array_path)),
-                                  self.spikes_array_path.exists],
+                                 lambda x: np.save(arr=x, file=str(self.spikes_array_path)),
+                                 self.spikes_array_path.exists],
                 't_start': [partial(pickle_load_from_path, path=self.t_start_path),
-                             lambda x: pickle_dump_to_path(obj=x, path=self.t_start_path),
-                             self.t_start_path.exists],
+                            lambda x: pickle_dump_to_path(obj=x, path=self.t_start_path),
+                            self.t_start_path.exists],
                 't_stop': [partial(pickle_load_from_path, path=self.t_stop_path),
                            lambda x: pickle_dump_to_path(obj=x, path=self.t_stop_path),
                            self.t_stop_path.exists],
                 'gids': [partial(np.load, file=self.gids_path),
-                          lambda x: np.save(arr=x, file=str(self.gids_path)),
-                          self.gids_path.exists]
+                         lambda x: np.save(arr=x, file=str(self.gids_path)),
+                         self.gids_path.exists]
             }
         # initalize attributes if present.
         # uninitialized registry_property's will be loaded from memory
@@ -88,14 +88,14 @@ class SpikeTrainsCollection:
             return self.neo_spike_trains
         else:
             self.neo_spike_trains = [
-                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == gid][:, 0]*qt.ms,
+                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == gid][:, 0] * qt.ms,
                                t_start=self.t_start, t_stop=self.t_stop, units=qt.ms)
                 for gid in self.gids
             ]
             return self.neo_spike_trains
 
     @autosave_method
-    def get_binned_spike_trains(self, time_bin: Union[qt.quantity.Quantity, int])\
+    def get_binned_spike_trains(self, time_bin: Union[qt.quantity.Quantity, int]) \
             -> elephant.conversion.BinnedSpikeTrain:
         """
         Function to retrieve the binned version of the spike trains of the object.
@@ -109,7 +109,7 @@ class SpikeTrainsCollection:
             _time_bin = time_bin
         return elephant.conversion.BinnedSpikeTrain(self.get_neo_spike_trains(), bin_size=_time_bin)
 
-    def convolve_with_kernel(self, time_bin: Union[qt.quantity.Quantity, int], kernel: elephant.kernels.Kernel)\
+    def convolve_with_kernel(self, time_bin: Union[qt.quantity.Quantity, int], kernel: elephant.kernels.Kernel) \
             -> np.ndarray:
         """
         Function to convolve the spike trains with a generic elephant kernel.
@@ -191,8 +191,8 @@ class Simulation:
             def store_seeds_to_memory(seeds):
                 for i, seed in enumerate(seeds):
                     target_for_seed = self.root / ("seed" + str(i))
-                    instance = SpikeTrainsCollection(target_for_seed, seed.spikes_array,
-                                                     seed.t_start, seed.t_stop, seed.gids)
+                    SpikeTrainsCollection(target_for_seed, seed.spikes_array,
+                                          seed.t_start, seed.t_stop, seed.gids)
 
             def check_if_seed():
                 return self.root.glob("seed*") is not None
@@ -219,7 +219,7 @@ class Simulation:
         if gids is not None:
             self.gids = gids
 
-    def convolve_with_kernel(self, time_bin: Union[int, qt.quantity.Quantity], kernel: elephant.kernels.Kernel)\
+    def convolve_with_kernel(self, time_bin: Union[int, qt.quantity.Quantity], kernel: elephant.kernels.Kernel) \
             -> np.ndarray:
         """
         Convolve all seeds with a given kernel. Returns a N_seeds x N_neurons x time_bins array.
@@ -232,7 +232,7 @@ class Simulation:
         return np.stack([st.convolve_with_kernel(time_bin=time_bin, kernel=kernel) for st in self.seeds])
 
     @autosave_method
-    def convolve_with_gk(self, time_bin: Union[int, qt.quantity.Quantity], sigma: Union[int, qt.quantity.Quantity], )\
+    def convolve_with_gk(self, time_bin: Union[int, qt.quantity.Quantity], sigma: Union[int, qt.quantity.Quantity], ) \
             -> np.ndarray:
         """
         Convolve all the seeds with a gaussian kernel. Returns a N_seeds x N_neurons x time_bins array
@@ -268,6 +268,19 @@ class Simulation:
         return [nrc.reliability.cosine_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
 
     @autosave_method
+    def gk_rel_pearson_scores(self, time_bin: Union[int, qt.quantity.Quantity],
+                              sigma: Union[int, qt.quantity.Quantity]) -> list[nrc.reliability.ReliabilityScore]:
+        """
+        Compute gaussian kernel reliability with pearson similarity for all neurons across seeds.
+
+        :param time_bin: time bin to use for binning the spike trains
+        :param sigma: sigma of the gaussian kernel to use to convolve the spike trains
+        :return list_of_reliability_scores: list of ReliabilityScore objects containing the score of all neurons.
+        """
+        convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma)
+        return [nrc.reliability.pearson_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
+
+    @autosave_method
     def average_number_of_spikes(self) -> np.ndarray:
         """
         Return the average number of spikes fired per seed for all neurons.
@@ -283,9 +296,8 @@ class Simulation:
         :return average_firing_rates: avearge firing rates across seeds.
         """
         return np.mean(np.stack(
-            [seed.get_firing_rates().rescale(1/qt.ms) for seed in self.seeds]
+            [seed.get_firing_rates().rescale(1 / qt.ms) for seed in self.seeds]
         ), axis=0) * (1 / qt.ms)
-
 
 
 class Connectome:
@@ -325,7 +337,7 @@ class Connectome:
             def store_sims_to_memory(sims):
                 for i, sim in enumerate(sims):
                     target_for_sim = self.root / ("sim" + str(i))
-                    instance = Simulation(target_for_sim,
+                    Simulation(target_for_sim,
                                           sim.seeds)
 
             def check_if_sims():
