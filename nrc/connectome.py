@@ -10,7 +10,7 @@ import quantities as qt
 from functools import partial
 
 import nrc.reliability
-from nrc.config import registry_property, autosave_method
+from nrc.config import registry_property, autosave_method, pickle_dump_to_path, pickle_load_from_path
 from tqdm import tqdm
 
 
@@ -41,21 +41,21 @@ class SpikeTrainsCollection:
             self.root.mkdir(exist_ok=True, parents=True)
             # target paths
             self.spikes_array_path = root / "spikes.npy"
-            self.t_start_path = root / "t_start.npy"
-            self.t_stop_path = root / "t_stop.npy"
+            self.t_start_path = root / "t_start.pkl"
+            self.t_stop_path = root / "t_stop.pkl"
             self.gids_path = root / "gids.npy"
             # helper dictionary. See config.registry_property for details.
             self.property_registry = {
                 'spikes_array': [partial(np.load, file=self.spikes_array_path),
                                   lambda x: np.save(arr=x, file=str(self.spikes_array_path)),
                                   self.spikes_array_path.exists],
-                't_start': [partial(np.load, file=self.t_start_path),
-                             lambda x: np.save(arr=x, file=str(self.t_start_path)),
+                't_start': [partial(pickle_load_from_path, path=self.t_start_path),
+                             lambda x: pickle_dump_to_path(obj=x, path=self.t_start_path),
                              self.t_start_path.exists],
-                't_stop': [partial(np.load, file=self.t_stop_path),
-                           lambda x: np.save(arr=x, file=str(self.t_stop_path)),
+                't_stop': [partial(pickle_load_from_path, path=self.t_stop_path),
+                           lambda x: pickle_dump_to_path(obj=x, path=self.t_stop_path),
                            self.t_stop_path.exists],
-                'gids' : [partial(np.load, file=self.gids_path),
+                'gids': [partial(np.load, file=self.gids_path),
                           lambda x: np.save(arr=x, file=str(self.gids_path)),
                           self.gids_path.exists]
             }
@@ -88,7 +88,7 @@ class SpikeTrainsCollection:
             return self.neo_spike_trains
         else:
             self.neo_spike_trains = [
-                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == gid][:, 0],
+                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == gid][:, 0]*qt.ms,
                                t_start=self.t_start, t_stop=self.t_stop, units=qt.ms)
                 for gid in self.gids
             ]
@@ -145,6 +145,22 @@ class SpikeTrainsCollection:
         kernel = elephant.kernels.GaussianKernel(sigma=_sigma)
         return self.convolve_with_kernel(time_bin=time_bin, kernel=kernel)
 
+    def get_number_of_spikes(self) -> np.ndarray:
+        """
+        Returns an array with the total number of spikes fired during the simulation per neuron.
+
+        :return n_spikes: np.ndarray containing a number per GID representing the total number of spikes fired.
+        """
+        return np.array([len(x) for x in self.get_neo_spike_trains()])
+
+    def get_firing_rates(self) -> qt.quantity.Quantity:
+        """
+        Returns an array with the total number of spikes fired during the simulation per neuron.
+
+        :return n_spikes: np.ndarray containing a number per GID representing the total number of spikes fired.
+        """
+        return self.get_number_of_spikes() / (self.t_stop - self.t_start)
+
 
 class Simulation:
     seeds = registry_property('seeds')
@@ -191,7 +207,14 @@ class Simulation:
 
         # initialize attributes.
         if spike_train_collection_list is not None:
-            self.seeds = spike_train_collection_list
+            try:
+                assert np.min([st.t_stop for st in spike_train_collection_list]) == \
+                       np.max([st.t_stop for st in spike_train_collection_list])
+                assert np.min([st.t_start for st in spike_train_collection_list]) == \
+                       np.max([st.t_start for st in spike_train_collection_list])
+                self.seeds = spike_train_collection_list
+            except AssertionError:
+                print("Different start and stop times for spike trains.")
 
         if gids is not None:
             self.gids = gids
@@ -243,6 +266,26 @@ class Simulation:
         """
         convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma)
         return [nrc.reliability.cosine_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
+
+    @autosave_method
+    def average_number_of_spikes(self) -> np.ndarray:
+        """
+        Return the average number of spikes fired per seed for all neurons.
+
+        :return average_number_of_spikes: avearge number of spikes fired across seeds.
+        """
+        return np.mean(np.stack([seed.get_number_of_spikes() for seed in self.seeds]), axis=0)
+
+    def average_firing_rate(self):
+        """
+        Return the average firing rate of all neurons.
+
+        :return average_firing_rates: avearge firing rates across seeds.
+        """
+        return np.mean(np.stack(
+            [seed.get_firing_rates().rescale(1/qt.ms) for seed in self.seeds]
+        ), axis=0) * (1 / qt.ms)
+
 
 
 class Connectome:

@@ -7,16 +7,22 @@ import shutil
 import quantities as qt
 
 
-class TestConnectomeInstance(unittest.TestCase):
+class GenericConnectomeTest(unittest.TestCase):
     def setUp(self) -> None:
         self.unlink_targets = []
         self.example_connectome = np.array([[1, 2], [1, 2]])
         self.example_ndata = pd.DataFrame([1, 2, 3])
         self.example_st = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [1, 2, 1, 2, 1, 2, 1, 2]]).T
         self.example_t_start = 0 * qt.s
-        self.example_t_stop = 1 * qt.s
+        self.example_t_stop = 2 * qt.s
         self.example_gids = np.array([1, 2])
 
+    def tearDown(self) -> None:
+        for target in self.unlink_targets:
+            shutil.rmtree(target, ignore_errors=True)
+
+
+class TestConnectomeInstance(GenericConnectomeTest):
     def test_all_items_accessible(self):
         connectome_target_path = test_data_path/"conn1"
         self.unlink_targets.append(connectome_target_path)
@@ -59,19 +65,8 @@ class TestConnectomeInstance(unittest.TestCase):
         c1 = Connectome(connectome_target_path)
         self.assertTrue(len(c1.simulations) == 1)
 
-    def tearDown(self) -> None:
-        for target in self.unlink_targets:
-            shutil.rmtree(target, ignore_errors=True)
 
-
-class TestSpikeTrainInstance(unittest.TestCase):
-    def setUp(self) -> None:
-        self.unlink_targets = []
-        self.example_st = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [1, 2, 1, 2, 1, 2, 1, 2]]).T
-        self.example_t_start = 0 * qt.s
-        self.example_t_stop = 1 * qt.s
-        self.example_gids = np.array([1, 2])
-
+class TestSpikeTrainInstance(GenericConnectomeTest):
     def test_all_items_accessible(self):
         target = test_data_path / "st1"
         self.unlink_targets.append(target)
@@ -94,23 +89,21 @@ class TestSpikeTrainInstance(unittest.TestCase):
         self.unlink_targets.append(target)
         stc = SpikeTrainsCollection(target, self.example_st, self.example_t_start,
                                     self.example_t_stop, gids=self.example_gids)
-        print(stc.get_neo_spike_trains())
         self.assertTrue(np.all(stc.get_neo_spike_trains()[0] == np.array([0.1, 0.3, 0.5, 0.7])))
         self.assertTrue(len(stc.get_neo_spike_trains()) == 2)
 
-    def tearDown(self) -> None:
-        for target in self.unlink_targets:
-            shutil.rmtree(target, ignore_errors=True)
+    def test_spike_counts(self):
+        target = test_data_path / "st4"
+        self.unlink_targets.append(target)
+        stc = SpikeTrainsCollection(target, self.example_st, self.example_t_start,
+                                    self.example_t_stop, gids=self.example_gids)
+        self.assertTrue(np.all(np.array([4, 4]) == stc.get_number_of_spikes()))
+        self.assertTrue(np.all(np.array([2, 2]) == stc.get_firing_rates()))
+        self.assertEqual(type(stc.get_firing_rates()), qt.quantity.Quantity)
+        print(stc.get_firing_rates())
 
 
-class TestSimulationInstance(unittest.TestCase):
-    def setUp(self) -> None:
-        self.unlink_targets = []
-        self.example_st = np.array([[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [1, 2, 1, 2, 1, 2, 1, 2]]).T
-        self.example_t_start = 0 * qt.s
-        self.example_t_stop = 1 * qt.s
-        self.example_gids = np.array([1, 2])
-
+class TestSimulationInstance(GenericConnectomeTest):
     def test_items_accessible(self):
         target = test_data_path / "sim1"
         self.unlink_targets.append(target)
@@ -132,9 +125,13 @@ class TestSimulationInstance(unittest.TestCase):
         self.assertTrue(np.all(s.seeds[0].spikes_array == s1.seeds[1].spikes_array))
         self.assertTrue(s.seeds[0].root == s1.seeds[0].root)
 
-    def tearDown(self) -> None:
-        for target in self.unlink_targets:
-            shutil.rmtree(target, ignore_errors=True)
+    def test_average_firing_rates(self):
+        target = test_data_path / "sim3"
+        self.unlink_targets.append(target)
+        example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
+                                  self.example_t_stop, self.example_gids)
+        s = Simulation(target, [example_sts]*3)
+        self.assertTrue(np.all(s.average_firing_rate() == np.array([4, 4]) / (2 * qt.s)))
 
 
 if __name__ == '__main__':

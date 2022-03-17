@@ -1,3 +1,4 @@
+import pathlib
 import pickle
 from functools import wraps
 
@@ -90,3 +91,26 @@ def autosave_method(method: callable) -> callable:
                 pickle.dump(res, target.open('wb'))
                 return res
     return autosave
+
+
+def pickle_dump_to_path(obj, path: pathlib.Path) -> None:
+    """
+    Pickle directly to path.
+
+    :param obj: Object to pickle dump.
+    :param path: path to pickle to
+    :return: None
+    """
+    with path.open('wb') as f:
+        pickle.dump(obj, f)
+
+
+def pickle_load_from_path(path: pathlib.Path):
+    """
+    Load from path.
+
+    :param path: path to pickle from.
+    :return: pickled object.
+    """
+    with path.open('rb') as f:
+        return pickle.load(f)
