@@ -163,6 +163,8 @@ class SpikeTrainsCollection:
 
     def unroot(self):
         self.root = None
+        self.spikes_array
+        self.gids
 
 
 class Simulation:
@@ -304,6 +306,8 @@ class Simulation:
 
     def unroot(self):
         self.root = None
+        self.seeds
+        self.gids
         for seed in self.seeds:
             seed.unroot()
 
@@ -378,5 +382,8 @@ class Connectome:
 
     def unroot(self):
         self.root = None
+        self.simulations
+        self.gids
+        self.adjacency
         for sim in self.simulations:
             sim.unroot()
