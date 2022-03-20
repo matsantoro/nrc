@@ -72,6 +72,10 @@ def autosave_method(method: callable) -> callable:
         obj = args[0]
         root = obj.root
         # check if it is possible to autosave.
+        if not kwargs.get('autosave', True):
+            print("Autosave disabled.")
+            kwargs.pop('autosave')
+            return method(*args, **kwargs)
         if root is None:  # if object is unrooted
             print("Object is unrooted. Cannot save.")
             return method(*args, **kwargs)

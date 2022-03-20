@@ -124,7 +124,6 @@ class SpikeTrainsCollection:
             _time_bin = time_bin
         return nrc.reliability.convolve_with_kernel(self.get_binned_spike_trains(time_bin=time_bin), kernel)
 
-    @autosave_method
     def convolve_with_gaussian_kernel(self, time_bin: Union[qt.quantity.Quantity, int],
                                       sigma: Union[qt.quantity.Quantity, int]):
         """
@@ -262,29 +261,32 @@ class Simulation:
         return np.stack([st.get_binned_spike_trains(time_bin=time_bin) for st in self.seeds])
 
     @autosave_method
-    def gk_rel_scores(self, time_bin: Union[int, qt.quantity.Quantity], sigma: Union[int, qt.quantity.Quantity]) \
-            -> list[nrc.reliability.ReliabilityScore]:
+    def gk_rel_scores(self, time_bin: Union[int, qt.quantity.Quantity], sigma: Union[int, qt.quantity.Quantity],
+                      save_convolved_sts: bool = False) -> list[nrc.reliability.ReliabilityScore]:
         """
         Compute gaussian kernel reliability for all neurons across seeds.
 
         :param time_bin: time bin to use for binning the spike trains
         :param sigma: sigma of the gaussian kernel to use to convolve the spike trains
+        :param save_convolved_sts: whether to save the convolved spike trains
         :return list_of_reliability_scores: list of ReliabilityScore objects containing the score of all neurons.
         """
-        convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma)
+        convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma, autosave=save_convolved_sts)
         return [nrc.reliability.cosine_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
 
     @autosave_method
     def gk_rel_pearson_scores(self, time_bin: Union[int, qt.quantity.Quantity],
-                              sigma: Union[int, qt.quantity.Quantity]) -> list[nrc.reliability.ReliabilityScore]:
+                              sigma: Union[int, qt.quantity.Quantity],
+                              save_convolved_sts: bool = False) -> list[nrc.reliability.ReliabilityScore]:
         """
         Compute gaussian kernel reliability with pearson similarity for all neurons across seeds.
 
         :param time_bin: time bin to use for binning the spike trains
         :param sigma: sigma of the gaussian kernel to use to convolve the spike trains
+        :param save_convolved_sts: whether to save convolved spike trains.
         :return list_of_reliability_scores: list of ReliabilityScore objects containing the score of all neurons.
         """
-        convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma)
+        convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma, autosave=save_convolved_sts)
         return [nrc.reliability.pearson_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
 
     @autosave_method
@@ -312,6 +314,7 @@ class Simulation:
         self.root = None
         for seed in self.seeds:
             seed.unroot()
+
 
 class Connectome:
     adjacency = registry_property('adjacency', )
