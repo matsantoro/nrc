@@ -160,6 +160,9 @@ class SpikeTrainsCollection:
         """
         return self.get_number_of_spikes() / (self.t_stop - self.t_start)
 
+    def shuffle(self):
+        return SpikeTrainsCollection()
+
     def unroot(self):
         self.spikes_array
         self.gids
@@ -288,6 +291,44 @@ class Simulation:
         """
         convolved_sts = self.convolve_with_gk(time_bin=time_bin, sigma=sigma, autosave=save_convolved_sts)
         return [nrc.reliability.pearson_reliability(convolved_sts[:, i, :]) for i in tqdm(range(len(self.gids)))]
+
+    @autosave_method
+    def vp_rel_scores(self, time_constant: Union[int, qt.quantity.Quantity]) -> list[nrc.reliability.ReliabilityScore]:
+        """
+        Compute victor-purpura reliability for all neurons across seeds.
+
+        :param time_constant: time bin to use for binning the spike trains
+        :return list_of_reliability_scores: list of ReliabilityScore objects containing the score of all neurons.
+        """
+        if type(time_constant) is int:
+            _time_constant = time_constant * qt.ms
+        else:
+            _time_constant = time_constant
+        return [nrc.reliability.get_vp_reliability(
+            spike_trains=[sts.get_neo_spike_trains()[i] for sts in self.seeds],
+            time_constant=_time_constant,
+            convert_to_similarity=True,
+        ) for i in tqdm(range(len(self.gids)))
+        ]
+
+    @autosave_method
+    def vr_rel_scores(self, time_constant: Union[int, qt.quantity.Quantity]) -> list[nrc.reliability.ReliabilityScore]:
+        """
+        Compute van Rossum reliability for all neurons across seeds.
+
+        :param time_constant: time bin to use for binning the spike trains
+        :return list_of_reliability_scores: list of ReliabilityScore objects containing the score of all neurons.
+        """
+        if type(time_constant) is int:
+            _time_constant = time_constant * qt.ms
+        else:
+            _time_constant = time_constant
+        return [nrc.reliability.get_vr_reliability(
+            spike_trains=[sts.get_neo_spike_trains()[i] for sts in self.seeds],
+            time_constant=_time_constant,
+            convert_to_similarity=True,
+        ) for i in tqdm(range(len(self.gids)))
+        ]
 
     @autosave_method
     def average_number_of_spikes(self) -> np.ndarray:
