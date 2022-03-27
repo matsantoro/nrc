@@ -11,6 +11,7 @@ from functools import partial
 
 import nrc.reliability
 from nrc.config import registry_property, autosave_method, pickle_dump_to_path, pickle_load_from_path
+import nrc.poisson_generation
 from tqdm import tqdm
 
 
@@ -160,8 +161,14 @@ class SpikeTrainsCollection:
         """
         return self.get_number_of_spikes() / (self.t_stop - self.t_start)
 
-    def shuffle(self):
-        return SpikeTrainsCollection()
+    @classmethod
+    def from_neo_spike_trains(cls, spike_trains: List[neo.SpikeTrain], root: Optional[Path], gids: np.ndarray):
+        spikes_array = np.concatenate(
+            [np.stack(
+                [spike_train.as_array(qt.ms), np.ones(len(spike_train))*gids[i]]
+            ).T for i, spike_train in enumerate(spike_trains)]
+        )
+        return SpikeTrainsCollection(root, spikes_array, spike_trains[0].t_start, spike_trains[0].t_stop, gids)
 
     def unroot(self):
         self.spikes_array
@@ -339,6 +346,7 @@ class Simulation:
         """
         return np.mean(np.stack([seed.get_number_of_spikes() for seed in self.seeds]), axis=0)
 
+    @autosave_method
     def average_firing_rate(self):
         """
         Return the average firing rate of all neurons.
@@ -348,6 +356,41 @@ class Simulation:
         return np.mean(np.stack(
             [seed.get_firing_rates().rescale(1 / qt.ms) for seed in self.seeds]
         ), axis=0) * (1 / qt.ms)
+
+    @autosave_method
+    def average_firing_rate_profiles(self, sigma: int):
+        neuron_sts = []
+        for i, neuron in enumerate(self.gids):
+            neuron_sts.append(self.seeds[0].get_neo_spike_trains()[i].merge(
+                *[seed.get_neo_spike_trains()[i] for seed in self.seeds[1:]]
+            ))
+        return nrc.poisson_generation.retrieve_fr_profile_from_sts(
+            neuron_sts,
+            elephant.kernels.GaussianKernel(sigma*qt.ms)
+        ).T
+
+    @classmethod
+    def from_firing_rate_profiles(cls, firing_rate_profiles: neo.AnalogSignal, repetitions: int,
+                                  seeds: int, root: Optional[Path], gids: np.ndarray):
+        all_spike_trains = []
+        for neuron in range(len(firing_rate_profiles)):
+            single_neuron_firing_rate = neo.AnalogSignal(
+                firing_rate_profiles[neuron, :],
+                units=firing_rate_profiles.units,
+                t_start=firing_rate_profiles.t_start,
+                sampling_rate=firing_rate_profiles.sampling_rate
+            )
+            all_spike_trains.append(nrc.poisson_generation.generate_spike_trains_from_profile(
+                single_neuron_firing_rate, repetitions, seeds
+            ))
+        seeds = []
+        for i in range(repetitions):
+            seeds.append(SpikeTrainsCollection.from_neo_spike_trains(
+                [all_spike_trains[neuron][i] for neuron in range(len(firing_rate_profiles))],
+                root=None,
+                gids=gids,
+            ))
+        return Simulation(root, seeds, gids)
 
     def unroot(self):
         self.seeds
