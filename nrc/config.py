@@ -1,6 +1,8 @@
 import pathlib
 import pickle
 from functools import wraps
+from pathlib import Path
+from typing import Optional
 
 
 def registry_property(property_name):
@@ -18,7 +20,7 @@ def registry_property(property_name):
     """
     def property_getter(p_name):  # property fget wrapper.
         def _property_getter(obj):
-            if obj.root is None:  # if object is unrooted, just use object attributes.
+            if obj.root_path is None:  # if object is unrooted, just use object attributes.
                 return getattr(obj, '__' + p_name)
             else:
                 try:
@@ -33,7 +35,7 @@ def registry_property(property_name):
 
     def property_setter(p_name):  # property fset wrapper
         def _property_setter(obj, value):
-            if obj.root is None:  # if object is unrooted, just use object attributes
+            if obj.root_path is None:  # if object is unrooted, just use object attributes
                 setattr(obj, '__' + p_name, value)
             else:
                 if obj.property_registry[p_name][2]():  # if there is data, warn the user
@@ -44,7 +46,7 @@ def registry_property(property_name):
 
     def property_deleter(p_name):  # property fdel wrapper. Deletion is not allowed.
         def _property_deleter(obj):
-            if obj.root is None:
+            if obj.root_path is None:
                 delattr(obj, '__' + p_name)
             else:
                 raise PermissionError("Cannot delete existing file")
@@ -70,13 +72,14 @@ def autosave_method(method: callable) -> callable:
     @wraps(method)
     def autosave(*args, **kwargs):
         obj = args[0]
-        root = obj.root
+        assert RootedObject in obj.__class__.__bases__
+        root_path = obj.root_path
         # check if it is possible to autosave.
         if not kwargs.get('autosave', True):
             print("Autosave disabled.")
             kwargs.pop('autosave')
             return method(*args, **kwargs)
-        if root is None:  # if object is unrooted
+        if root_path is None:  # if object is unrooted
             print("Object is unrooted. Cannot save.")
             return method(*args, **kwargs)
         if len(args) > 1:  # if not all arguments are specified by name.
@@ -85,7 +88,7 @@ def autosave_method(method: callable) -> callable:
             return method(*args, **kwargs)
         else:
             target_string = '_'.join([key + '_' + str(kwargs[key]) for key in sorted(kwargs)])
-            target = root / (method.__name__ + '_' + target_string + '.pkl')  # autosave target
+            target = root_path / (method.__name__ + '_' + target_string + '.pkl')  # autosave target
             if target.exists():  # if computation already occurred.
                 print("Target already computed. Retrieved from " + str(target))
                 return pickle.load(target.open('rb'))
@@ -118,3 +121,21 @@ def pickle_load_from_path(path: pathlib.Path):
     """
     with path.open('rb') as f:
         return pickle.load(f)
+
+
+class RootedObject:
+    def __init__(self, root_path: Optional[Path]):
+        self.root_path = None
+        try:
+            self.root(root_path)
+        except ValueError:
+            pass
+
+    def root(self, root_path: Path):
+        if root_path is None:
+            raise ValueError
+        self.root_path = root_path
+        self.root_path.mkdir(exist_ok=True, parents=True)
+
+    def unroot(self):
+        self.root_path = None
