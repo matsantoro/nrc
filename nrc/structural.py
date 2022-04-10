@@ -11,7 +11,6 @@ from pathlib import Path
 from functools import wraps
 from pyflagser.flagser_count import flagser_count_unweighted
 from pyflagsercontain import compute_cell_count
-from pyflagsercount import pyflagsercount
 
 
 def from_adjacency(local_function):
