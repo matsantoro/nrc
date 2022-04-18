@@ -19,6 +19,8 @@ from nrc.structural import (
     structural_function_list
 )
 
+import pyflagsercount
+
 from tqdm import tqdm
 
 
@@ -478,6 +480,14 @@ class Connectome(RootedObject):
                      lambda x: np.save(arr=x, file=str(self.gids_path)),
                      self.gids_path.exists]
         }
+
+    def simplex_list(self, threads=30):
+        lists = pyflagsercount.flagser_count(self.adjacency, return_simplices=True, threads=threads, min_dim_print=0)['simplices']
+        bedges = np.multiply(self.adjacency, self.adjacency.T)
+        for i in range(len(lists)):
+            for j in range(len(lists[i])):
+                lists[i][j] = lists[i][j] + [int(np.sum(bedges[lists[i][j]][:, lists[i][j]])/2)]
+        return [np.array(l) for l in lists[1:]]
 
     def unroot(self):
         self.simulations
