@@ -289,6 +289,17 @@ def bls_matrix(matrix):
     return np.subtract(np.eye(current_size, dtype='float64'), tps_matrix(matrix))
 
 
+def biggest_cc(m: np.ndarray):
+    if m.shape[0]:
+        _, labels = csgraph.connected_components(m)
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        biggest_label = unique_labels[np.argmax(counts)]
+        vertices = np.nonzero(labels == biggest_label)[0]
+        return m[np.ix_(vertices, vertices)], vertices
+    else:
+        return m, []
+
+
 structural_function_list = [
     average_indegree,
     average_degree,

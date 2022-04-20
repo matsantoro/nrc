@@ -16,7 +16,8 @@ import nrc.reliability
 from nrc.config import registry_property, autosave_method, pickle_dump_to_path, pickle_load_from_path, RootedObject
 import nrc.poisson_generation
 from nrc.structural import (
-    structural_function_list
+    structural_function_list,
+    biggest_cc
 )
 
 import pyflagsercount
@@ -519,7 +520,7 @@ class TribeView(RootedObject):
     def tribes(self, root: bool = True):
         if root:
             self.root(self.connectome_object.root_path / ('tribes/' +
-                                                          '_'.join([x.__name__ for x in self.transform_method_list])))
+                                                          '/'.join([x.__name__ for x in self.transform_method_list])))
         tribes = self._tribes()
         return tribes
 
@@ -572,11 +573,75 @@ class TribeView(RootedObject):
             'second_degree_' + kind
         )
 
-    def biggest_cc(self, kind: str):
-        pass
+    def biggest_cc(self):
+        def biggest_cc_transform(x: np.ndarray, conn: Connectome):
+            def turn_tribe_in_biggest_cc(boolean_array):
+                indices = np.nonzero(boolean_array)[0]
+                print(indices)
+                tribe_matrix = conn.adjacency[indices][:, indices]
+                indices_submatrix = indices[biggest_cc(tribe_matrix)[1]]
+                print(indices_submatrix)
+                mask = np.zeros((len(boolean_array),), dtype=bool)
+                mask[indices_submatrix] = True
+                return np.logical_and(boolean_array, mask)
 
-    def generate_control(self, layer_profile: bool, mtype_profile: bool):
-        pass
+            return np.apply_along_axis(
+                arr=x,
+                axis=1,
+                func1d=lambda y: turn_tribe_in_biggest_cc(y)
+            )
+
+        self.add_transform(
+            biggest_cc_transform,
+            'biggest_cc'
+        )
+
+    def generate_control(self, layer_profile: bool = False, mtype_profile: bool = False, seed: int = 0):
+        gen = np.random.Generator(np.random.PCG64(seed))
+
+        def control_transform(x: np.ndarray, conn: Connectome):
+            def turn_tribe_to_control(boolean_array):
+                indices = np.nonzero(boolean_array)[0]
+                if layer_profile or mtype_profile:
+                    if layer_profile:
+                        profile_type = 'layer'
+                    else:
+                        profile_type = 'mtype'
+                    categories = conn.neuron_data[profile_type]
+                    category_counts = np.unique(conn.neuron_data.iloc[indices][profile_type], return_counts=True)
+                    nhbds = []
+                    for cat, value in zip(*category_counts):
+                        neuron_pool = conn.neuron_data.iloc[categories == cat].index
+                        layer_neurons = gen.choice(neuron_pool, size=value, replace=False)
+                        nhbds.append(layer_neurons)
+                    try:
+                        nhbd = np.concatenate(nhbds)
+                    except ValueError: #empty tribe
+                        nhbd = []
+                    array = np.zeros((len(boolean_array),), dtype=bool)
+                    array[nhbd] = True
+                    return array
+                else:
+                    indices_submatrix = gen.choice(len(indices), np.count_nonzero(boolean_array), replace=False)
+                mask = np.zeros((len(boolean_array),), dtype=bool)
+                mask[indices_submatrix] = True
+                return np.logical_and(boolean_array, mask)
+
+            return np.apply_along_axis(
+                arr=x,
+                axis=1,
+                func1d=lambda y: turn_tribe_to_control(y)
+            )
+
+        func_name = 'control_transform'
+        if layer_profile:
+            func_name += '_layer'
+        elif mtype_profile:
+            func_name += '_mtype'
+        self.add_transform(
+            control_transform,
+            func_name
+        )
 
     def add_transform(self, method: callable, method_name: Optional[str]):
         if self.root_path is not None:

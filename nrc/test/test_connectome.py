@@ -256,7 +256,7 @@ class TestTribeView(GenericConnectomeTest):
         t.add_transform(lambda x, conn: x.T, 'transpose')
         t.tribes()
         self.assertTrue((connectome_target_path / 'tribes/_tribes_.pkl').exists())
-        self.assertTrue((connectome_target_path / 'tribes/transpose_transpose/_tribes_.pkl').exists())
+        self.assertTrue((connectome_target_path / 'tribes/transpose/transpose/_tribes_.pkl').exists())
 
     def test_autosave(self):
         connectome_target_path = test_data_path / "tconn3"
@@ -327,6 +327,21 @@ class TestTribeView(GenericConnectomeTest):
              [False, False, True, True, False],
              [False, False, True, True, False]]
         )))
-
+        t.biggest_cc()
+        self.assertTrue(np.all(t.tribes() == np.array(
+            [[False, False, False, False, False],
+             [False, False, False, False, False],
+             [False, False, True, True, False],
+             [False, False, True, True, False],
+             [False, False, True, True, False]]
+        )))
+        t.generate_control()
+        self.assertFalse(np.all(t.tribes() == np.array(
+            [[False, False, False, False, False],
+             [False, False, False, False, False],
+             [False, False, True, True, False],
+             [False, False, True, True, False],
+             [False, False, True, True, False]]
+        )))
 if __name__ == '__main__':
     unittest.main()
