@@ -505,28 +505,35 @@ class TribeView(RootedObject):
     analysis_data_error = registry_property("analysis_data_error")
 
     def __init__(self, transform_method_list: List[callable],
-                 connectome_object: Optional[Connectome]):
+                 connectome_object: Optional[Connectome],
+                 tribe_type: str = ''):
         self.transform_method_list = transform_method_list
         self.connectome_object = connectome_object
         self.analysis_method_list = structural_function_list
+        self.tribe_type = tribe_type
         self.tribes()
-        RootedObject.__init__(self, connectome_object.root_path / "tribes")
-
+        RootedObject.__init__(self, connectome_object.root_path / (self.tribe_type + "tribes"))
 
     def _tribes_for_chief(self):
-        return (self.connectome_object.adjacency + self.connectome_object.adjacency.T +
+        if self.tribe_type is '':
+            return (self.connectome_object.adjacency + self.connectome_object.adjacency.T +
                 np.diag(np.ones(len(self.connectome_object.adjacency)))).astype(bool)
+        elif self.tribe_type is 'in':
+            return (self.connectome_object.adjacency.T +
+                    np.diag(np.ones(len(self.connectome_object.adjacency)))).astype(bool)
+        elif self.tribe_type is 'out':
+            return (self.connectome_object.adjacency +
+                    np.diag(np.ones(len(self.connectome_object.adjacency)))).astype(bool)
 
     def tribes(self, root: bool = True):
         if root:
-            self.root(self.connectome_object.root_path / ('tribes/' +
+            self.root(self.connectome_object.root_path / (self.tribe_type + 'tribes/' +
                                                           '/'.join([x.__name__ for x in self.transform_method_list])))
         tribes = self._tribes()
         return tribes
 
     @autosave_method
     def _tribes(self):
-        # TODO: add sparsity check for saving data efficiently
         tribes = self._tribes_for_chief()
         for method in self.transform_method_list:
             tribes = method(tribes, self.connectome_object)
@@ -577,10 +584,8 @@ class TribeView(RootedObject):
         def biggest_cc_transform(x: np.ndarray, conn: Connectome):
             def turn_tribe_in_biggest_cc(boolean_array):
                 indices = np.nonzero(boolean_array)[0]
-                print(indices)
                 tribe_matrix = conn.adjacency[indices][:, indices]
                 indices_submatrix = indices[biggest_cc(tribe_matrix)[1]]
-                print(indices_submatrix)
                 mask = np.zeros((len(boolean_array),), dtype=bool)
                 mask[indices_submatrix] = True
                 return np.logical_and(boolean_array, mask)

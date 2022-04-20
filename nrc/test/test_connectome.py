@@ -343,5 +343,21 @@ class TestTribeView(GenericConnectomeTest):
              [False, False, True, True, False],
              [False, False, True, True, False]]
         )))
+        t1 = TribeView([], connectome_object=c, tribe_type='in')
+        self.assertTrue(np.all(t1.tribes() == np.array(
+            [[True, True, False, False, False],
+             [True, True, False, False, False],
+             [False, False, True, False, False],
+             [False, False, True, True, False],
+             [False, False, True, True, True]]
+        )))
+        t2 = TribeView([], connectome_object=c, tribe_type='out')
+        self.assertTrue(np.all(t2.tribes() == np.array(
+            [[True, True, False, False, False],
+             [True, True, False, False, False],
+             [False, False, True, True, True],
+             [False, False, False, True, True],
+             [False, False, False, False, True]]
+        )))
 if __name__ == '__main__':
     unittest.main()
