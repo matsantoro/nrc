@@ -480,7 +480,7 @@ class Connectome(RootedObject):
             for i, sim in enumerate(sims):
                 target_for_sim = self.root_path / ("sim" + str(i))
                 Simulation(target_for_sim,
-                           sim.seeds)
+                           sim.seeds, self.gids)
 
         def check_if_sims():
             return self.root_path.glob("sim*") is not None
