@@ -454,14 +454,14 @@ class Connectome(RootedObject):
         if adjacency_matrix is not None:
             self.adjacency = adjacency_matrix
 
+        if gids is not None:
+            self.gids = gids
+
         if ndata is not None:
             self.neuron_data = ndata
 
         if simulations is not None:
             self.simulations = simulations
-
-        if gids is not None:
-            self.gids = gids
 
     def root(self, root_path: Path):
         super(Connectome, self).root(root_path)
