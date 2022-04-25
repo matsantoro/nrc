@@ -31,10 +31,22 @@ def _normalize(matrix: np.ndarray):
 
 
 def _average_triu(matrix):
+    """
+    Takes the average of the upper triangular part of the matrix.
+
+    :param matrix: matrix to do the average
+    :return: a number.
+    """
     return np.sum(np.triu(matrix, 1)) / matrix.shape[0] / (matrix.shape[0]-1) * 2
 
 
 def average_pearson(traces: np.array) -> float:
+    """
+    Average pearson correlation of signals.
+
+    :param traces: np.array containing the signals to make the correlation of.
+    :return: a number.
+    """
     # Each row is a trace.
     traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
     similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
@@ -42,14 +54,13 @@ def average_pearson(traces: np.array) -> float:
     return _average_triu(correlation_matrix)
 
 
-def pearson_range(traces: np.array) -> float:
-    traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
-    similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
-    correlation_matrix = _normalize(similarity_matrix)
-    return np.max(np.triu(correlation_matrix,1)) - np.min(np.triu(correlation_matrix,1))
-
-
 def pearson_matrix(traces: np.array) -> np.ndarray:
+    """
+    Pearson matrix of a set of signals.
+
+    :param traces: np.ndarray containing the signals
+    :return: pearson correlation matrix
+    """
     traces_noavg = traces - np.expand_dims(np.mean(traces, axis = 1), -1)
     similarity_matrix = np.dot(traces_noavg, traces_noavg.T)
     correlation_matrix = _normalize(similarity_matrix)
@@ -57,6 +68,12 @@ def pearson_matrix(traces: np.array) -> np.ndarray:
 
 
 def average_cosine_distance(traces: np.array) -> float:
+    """
+    Average cosine distance of a set of signals.
+
+    :param traces: np.array containing the signals
+    :return: a number
+    """
     similarity_matrix = np.dot(traces, traces.T)
     correlation_matrix = _normalize(similarity_matrix)
     return _average_triu(correlation_matrix)
@@ -118,7 +135,13 @@ def get_kernel_reliability(
     return ReliabilityScore(seed_correlation_matrix)
 
 
-def get_kernel_values(kernel, binsize):
+def get_kernel_values(kernel: elephant.kernels.Kernel, binsize: qt.quantity.Quantity):
+    """
+    Helper function to retrieve the values of a kernel.
+    :param kernel: kernel to retrieve the values of.
+    :param binsize: size of a bin in milliseconds.
+    :return: an array containing the kernel values.
+    """
     kernel_bins = np.ceil(2 * kernel.sigma / binsize)
     kernel_values = kernel(np.arange(-kernel_bins, kernel_bins + 1) * binsize)
     return kernel_values
@@ -129,6 +152,14 @@ def get_cc_reliability(
     binsize: qt.quantity.Quantity = 1.0 * qt.ms,
     n_lags: int = 2,
 ):
+    """
+    Cross-correlogram reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param binsize: bin size to bin the spike trains with
+    :param n_lags: number of lags to use
+    :return score: ReliabilityScore instance of the spike trains.
+    """
     binned_spike_trains = [
         BinnedSpikeTrain(
             spike_train,
@@ -157,6 +188,14 @@ def get_vr_reliability(
     time_constant: qt.quantity.Quantity = 1.0 * qt.ms,
     convert_to_similarity: bool = False,
 ):
+    """
+    Van rossum reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param time_constant: time constant to use
+    :param convert_to_similarity: whether to convert the distance to a similarity measure
+    :return score: ReliabilityScore instance of the spike trains.
+    """
     distance = van_rossum_distance(spike_trains, time_constant)
     if convert_to_similarity:
         distance = 1 / (1 + distance)
@@ -168,6 +207,14 @@ def get_vp_reliability(
     time_constant: qt.quantity.Quantity = 1.0 * qt.ms,
     convert_to_similarity: bool = False,
 ):
+    """
+    Victor-purpura reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param time_constant: time constant to use
+    :param convert_to_similarity: whether to convert the distance to a similarity measure
+    :return score: ReliabilityScore instance of the spike trains.
+    """
     distance = victor_purpura_distance(spike_trains, 1 / time_constant)
     if convert_to_similarity:
         distance = 1 / (1 + distance)
@@ -178,6 +225,13 @@ def get_stt_reliability(
     spike_trains: List[neo.SpikeTrain],
     time_constant: qt.quantity.Quantity = 1.0 * qt.ms,
 ):
+    """
+    STT reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param time_constant: time constant to use
+    :return score: ReliabilityScore instance of the spike trains.
+    """
     matrix = np.zeros((len(spike_trains), len(spike_trains)))
     for i in range(len(spike_trains)):
         for j in range(i + 1, len(spike_trains)):
@@ -194,6 +248,13 @@ def get_cor_reliability(
     spike_trains: List[neo.SpikeTrain],
     binsize: qt.quantity.Quantity = 1.0 * qt.ms,
 ):
+    """
+    Correlation reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param binsize: binsize size.
+    :return score: ReliabilityScore instance of the spike trains.
+    """
     binned_spike_trains = BinnedSpikeTrain(
         spike_trains,
         t_start=spike_trains[0].t_start,
@@ -208,6 +269,14 @@ def get_cos_reliability(
     spike_trains: List[neo.SpikeTrain],
     binsize: qt.quantity.Quantity = 1.0 * qt.ms,
 ):
+    """
+    cosine similarity reliability of a list of neo.SpikeTrain objects.
+
+    :param spike_trains: list of neo.SpikeTrain objects to compute the reliability of.
+    :param binsize: binsize size.
+    :return score: ReliabilityScore instance of the spike trains.
+    """
+
     binned_spike_trains = BinnedSpikeTrain(
         spike_trains,
         t_start=spike_trains[0].t_start,
@@ -215,26 +284,6 @@ def get_cos_reliability(
         bin_size=binsize,
     )
     seed_correlation_matrix = cosine_matrix(binned_spike_trains.to_array())
-    return ReliabilityScore(seed_correlation_matrix)
-
-
-def get_kruskal_reliability(
-    spike_trains: List[neo.SpikeTrain],
-    binsize: qt.quantity.Quantity = 1.0 * qt.ms,
-    sigma: qt.quantity.Quantity = 1.0 * qt.ms,
-):
-    binned_spike_trains = BinnedSpikeTrain(
-        spike_trains,
-        t_start=spike_trains[0].t_start,
-        t_stop=spike_trains[0].t_stop,
-        bin_size=binsize,
-    )
-    kernel = GaussianKernel(sigma)
-    kernel_values = get_kernel_values(kernel, binsize)
-    convolved_signals = convolve1d(
-        binned_spike_trains.to_array().astype(float), kernel_values, axis=1
-    )
-    seed_correlation_matrix = pearson_matrix(convolved_signals)
     return ReliabilityScore(seed_correlation_matrix)
 
 

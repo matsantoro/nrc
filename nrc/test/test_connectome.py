@@ -76,12 +76,12 @@ class TestConnectomeInstance(GenericConnectomeTest):
         self.unlink_targets.append(connectome_target_path)
         c = Connectome(connectome_target_path, self.example_connectome, self.example_ndata)
         lists = c.simplex_list(1)
-        self.assertTrue(np.all(lists[0] == np.array([[0, 1, 1],
-       [1, 0, 1],
-       [2, 3, 0],
-       [2, 4, 0],
-       [3, 4, 0]])))
-        self.assertTrue(np.all(lists[1] == np.array([[2, 3, 4, 0]])))
+        self.assertTrue(np.all(lists[0] == np.array([[0, 1],
+       [1, 0],
+       [2, 3],
+       [2, 4],
+       [3, 4]])))
+        self.assertTrue(np.all(lists[1] == np.array([[2, 3, 4]])))
 
 
 class TestSpikeTrainInstance(GenericConnectomeTest):

@@ -1,5 +1,5 @@
 import pdb
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 from pathlib import Path
 
 import elephant.conversion
@@ -343,6 +343,12 @@ class Simulation(RootedObject):
 
     @autosave_method
     def average_firing_rate_profiles(self, sigma: int):
+        """
+        Return the avera<age firing rate profiles for all neurons, computed with a gaussian kernel
+
+        :param sigma: width of the kernel
+        :return: an array containing the firing rate profiles of neurons.
+        """
         neuron_sts = []
         for i, neuron in enumerate(self.gids):
             neuron_sts.append(self.seeds[0].get_neo_spike_trains()[i].merge(
@@ -356,6 +362,16 @@ class Simulation(RootedObject):
     @classmethod
     def from_firing_rate_profiles(cls, firing_rate_profiles: neo.AnalogSignal, repetitions: int,
                                   seeds: int, root_path: Optional[Path], gids: np.ndarray):
+        """
+        Generate another simulation object with poisson process generation using given firing rate profiles.
+
+        :param firing_rate_profiles: a signal containing the firing rate profiles of the simulation
+        :param repetitions: number of repetitions of the generated experiments
+        :param seeds: seed to use for the generation. Will produce seeds for the simulation
+        :param root_path: root_path of the new simulation object
+        :param gids: gids to use
+        :return: a simulation object with the generated spike trains.
+        """
         all_spike_trains = []
         for neuron in range(len(firing_rate_profiles)):
             single_neuron_firing_rate = neo.AnalogSignal(
@@ -482,13 +498,37 @@ class Connectome(RootedObject):
                      self.gids_path.exists]
         }
 
-    def simplex_list(self, threads=30):
-        lists = pyflagsercount.flagser_count(self.adjacency, return_simplices=True, threads=threads, min_dim_print=0)['simplices']
-        bedges = np.multiply(self.adjacency, self.adjacency.T)
-        for i in range(len(lists)):
-            for j in range(len(lists[i])):
-                lists[i][j] = lists[i][j] + [int(np.sum(bedges[lists[i][j]][:, lists[i][j]])/2)]
+    @autosave_method
+    def simplex_list(self, threads: int = 30, flagser_args: Optional[Dict]=None):
+        """
+        Computes the simplex lists and returns them.
+        :param threads: number of thread to use.
+        :param flagser_args: other arguments for flagser. min_dim_print and threads already specified.
+        :return simplex_lists: a list containing one array per dimension with the simplices of that dimension
+        """
+        if flagser_args is None:
+            flagser_args = dict()
+        lists = pyflagsercount.flagser_count(self.adjacency,
+                                             return_simplices=True, threads=threads, min_dim_print=0,
+                                             **flagser_args)['simplices']
         return [np.array(l) for l in lists[1:]]
+
+    @autosave_method
+    def reciprocal_connections_in_simplices(self, threads=30):
+        """
+        Return a list of array, where for each dimension there is the number of bidirectional edges
+        a given simplex contains
+        :param threads: number of threads to compute the simplex lists with
+        :return: a list of arrays where each array contains the reciprocal connections of all simplices
+        """
+        lists = self.simplex_list(threads=threads)
+        bedges = np.multiply(self.adjacency, self.adjacency.T)
+        bedges_lists = []
+        for i in range(len(lists)):
+            bedge_array = np.zeros(len(lists[i]))
+            for j in range(len(lists[i])):
+                bedge_array = int(np.sum(bedges[lists[i][j]][:, lists[i][j]])/2)
+        return bedge_array
 
     def unroot(self):
         self.simulations
@@ -507,6 +547,13 @@ class TribeView(RootedObject):
     def __init__(self, transform_method_list: List[callable],
                  connectome_object: Optional[Connectome],
                  tribe_type: str = ''):
+        """
+        Object that allows manipulation and usage of tribes.
+
+        :param transform_method_list: list of transformation methods to use with this tribe.
+        :param connectome_object:  connectome object to use for tribe manipulation
+        :param tribe_type: type of initial tribe. "in", "out", "", are allowed, with the obvious meaning.
+        """
         self.transform_method_list = transform_method_list
         self.connectome_object = connectome_object
         self.analysis_method_list = structural_function_list
@@ -515,6 +562,10 @@ class TribeView(RootedObject):
         RootedObject.__init__(self, connectome_object.root_path / (self.tribe_type + "tribes"))
 
     def _tribes_for_chief(self):
+        """
+        Helper function for initial tribe retrieval.
+        :return tribes: an array object containing in elemen A_ij whether neuron j is part of the tribe of i
+        """
         if self.tribe_type is '':
             return (self.connectome_object.adjacency + self.connectome_object.adjacency.T +
                 np.diag(np.ones(len(self.connectome_object.adjacency)))).astype(bool)
@@ -526,6 +577,14 @@ class TribeView(RootedObject):
                     np.diag(np.ones(len(self.connectome_object.adjacency)))).astype(bool)
 
     def tribes(self, root: bool = True):
+        """
+        Return the tribes with the current transform method list.
+
+        :param root: whether to root the tribes in the process. The TribeView will be rooted according to the
+        transforms in it. For example, second degree out tribes of in tribes will be stored as
+        "original_root/intribes/second_degree_out/_tribes.pkl"
+        :return: an ndarray containing in A_ij whether neuron j belongs to the tribe of neuron i
+        """
         if root:
             self.root(self.connectome_object.root_path / (self.tribe_type + 'tribes/' +
                                                           '/'.join([x.__name__ for x in self.transform_method_list])))
@@ -540,12 +599,23 @@ class TribeView(RootedObject):
         return tribes
 
     def threshold(self, bool_array: np.ndarray, threshold_name: str):
+        """
+        Add a threshold for neurons in the TribeView object.
+
+        :param bool_array: The boolean array representing whether the neuron passed the threshold
+        :param threshold_name: The name of the threshold
+        """
         self.add_transform(
             lambda x, conn: np.apply_along_axis(arr=x, func1d=lambda y: y * bool_array, axis=1),
             'threshold_' + threshold_name
         )
 
     def second_degree(self, kind: str):
+        """
+        Add a second degree transformation for neurons in the TribeView object.
+
+        :param kind: Which kind of transformation to apply.
+        """
         if kind == 'all':
             def f(y, connectome):
                 return np.logical_and(
@@ -581,6 +651,9 @@ class TribeView(RootedObject):
         )
 
     def biggest_cc(self):
+        """
+        Add a biggest_cc transform to the TribeView object. weak connection.
+        """
         def biggest_cc_transform(x: np.ndarray, conn: Connectome):
             def turn_tribe_in_biggest_cc(boolean_array):
                 indices = np.nonzero(boolean_array)[0]
@@ -602,6 +675,15 @@ class TribeView(RootedObject):
         )
 
     def generate_control(self, layer_profile: bool = False, mtype_profile: bool = False, seed: int = 0):
+        """
+        Add a control generation step to the tribe retrieval process.
+
+        :param layer_profile: bool indicating whether the newly generated tribes should have the
+        same layer profile as the previous.
+        :param mtype_profile: bool indicating whether the newly generated tribes should have the
+        same mtype profile as the previous
+        :param seed: seed for the control generation.
+        """
         gen = np.random.Generator(np.random.PCG64(seed))
 
         def control_transform(x: np.ndarray, conn: Connectome):
@@ -649,6 +731,13 @@ class TribeView(RootedObject):
         )
 
     def add_transform(self, method: callable, method_name: Optional[str]):
+        """
+        Add a generic transformation.
+
+        :param method: the method to use in transformation. Should have two inputs: the tribe matrix and the connectome
+        object
+        :param method_name: name to use in saving the data
+        """
         if self.root_path is not None:
             print("Object unrooted")
             self.unroot()
@@ -657,6 +746,11 @@ class TribeView(RootedObject):
         self.transform_method_list.append(method)
 
     def pop_transform(self, method_name: Optional[str]):
+        """
+        Remove the last transformation or a transformation with a given name.
+
+        :param method_name: if present, removes the first transformation with a given name.
+        """
         if method_name is not None:
             for i, method in enumerate(self.transform_method_list):
                 if method.__name__ == method_name:
@@ -672,15 +766,28 @@ class TribeView(RootedObject):
                 self.unroot()
 
     def add_analysis(self, method: callable, method_name: Optional[str]):
+        """
+        Add a generic analysis method.
+
+        :param method: the analysis method. Should have three inputs: the boolean array expressing the tribe,
+        the submatrix containing the tribe connectivity, and the connectome object.
+        :param method_name: name of the analysis method.
+        """
         if method_name is not None:
             method.__name__ = method_name
         self.analysis_method_list.append(method)
 
     def pop_analysis(self, method_name: Optional[str]):
+        """
+        Remove the last analysis or an analysis with a given name.
+
+        :param method_name: if present, removes the first analysis with a given name.
+        """
         if method_name is not None:
             for i, method in enumerate(self.transform_method_list):
                 if method.__name__ == method_name:
                     self.analysis_method_list.pop(i)
+                    break
         else:
             self.transform_method_list.pop()
 
@@ -691,10 +798,14 @@ class TribeView(RootedObject):
         self.analysis_data_error.loc[results[0], [method.__name__ for method in analysis_list]] = results[1:]
 
     def analyse(self, analysis_list: Optional[List[callable]] = None):
+        """
+        Compute tribe data and stores it in the data dataframe.
+        :param analysis_list: if present, only compute the passed analysis functions.
+        """
         #  In: function, string
         if analysis_list is None:
             analysis_list = self.analysis_method_list
-        vertices_passed = self.analysis_data_error.dropna().index.values
+        vertices_passed = self.analysis_data_error[[x.__name__ for x in analysis_list]].dropna().index.values
         tribes = self.tribes()
 
         def compute_for_chief(chief: int, queue: multiprocessing.Queue):
@@ -737,7 +848,7 @@ class TribeView(RootedObject):
                 multiprocessing.Process(target=compute_for_chiefs, args=(vertices_to_do[chunk[0]:chunk[1]], mpqueue)))
             threads[-1].start()
             if not j % 10:
-                print('Updating partial results..')
+                print('Updating partial results..' + str(j) + "/" + str(len(chunks)))
                 self.analysis_data = self.analysis_data
                 self.analysis_data_error = self.analysis_data_error
             if chunk == chunks[-1]:
