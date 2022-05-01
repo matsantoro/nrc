@@ -272,8 +272,27 @@ class TestTribeView(GenericConnectomeTest):
         t2 = TribeView(t.transform_method_list, c)
         self.assertTrue(np.all(t2.tribes() == t.tribes()))
 
-    def test_implemented_methods(self):
+    def test_extra_method(self):
         connectome_target_path = test_data_path / "tconn4"
+        self.unlink_targets.append(connectome_target_path)
+        c = Connectome(connectome_target_path, self.example_connectome, self.example_ndata, gids=self.example_gids)
+        t = TribeView([], c)
+
+        def example(**kwargs):
+            return 1
+
+        def example1(**kwargs):
+            return 2
+
+        t.analyse([example])
+        self.assertTrue(example.__name__ in t.analysis_data.columns)
+        t.add_analysis(example1)
+        t.analyse([example1])
+        self.assertTrue(example1.__name__ in t.analysis_data.columns)
+        self.assertTrue(example.__name__ in t.analysis_data.columns)
+
+    def test_implemented_methods(self):
+        connectome_target_path = test_data_path / "tconn5"
         self.unlink_targets.append(connectome_target_path)
         c = Connectome(connectome_target_path, self.example_connectome, self.example_ndata, gids=self.example_gids)
         t = TribeView([], c)

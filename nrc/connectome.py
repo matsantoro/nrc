@@ -767,7 +767,7 @@ class TribeView(RootedObject):
                 logging.info("object unrooted")
                 self.unroot()
 
-    def add_analysis(self, method: callable, method_name: Optional[str]):
+    def add_analysis(self, method: callable, method_name: Optional[str] = None):
         """
         Add a generic analysis method.
 
@@ -807,6 +807,13 @@ class TribeView(RootedObject):
         #  In: function, string
         if analysis_list is None:
             analysis_list = self.analysis_method_list
+        for method in analysis_list:
+            if method.__name__ not in self.analysis_data.columns:
+                self.analysis_data[method.__name__] = np.nan
+                self.analysis_data_error[method.__name__] = np.nan
+        # save to hd by assignment
+        self.analysis_data = self.analysis_data
+        self.analysis_data_error = self.analysis_data_error
         vertices_passed = self.analysis_data_error[[x.__name__ for x in analysis_list]].dropna().index.values
         tribes = self.tribes()
 
