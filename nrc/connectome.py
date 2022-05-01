@@ -78,7 +78,7 @@ class SpikeTrainsCollection(RootedObject):
             return self.neo_spike_trains
         else:
             self.neo_spike_trains = [
-                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == gid][:, 0] * qt.ms,
+                neo.SpikeTrain(times=self.spikes_array[self.spikes_array[:, 1] == float(gid)][:, 0] * qt.ms,
                                t_start=self.t_start, t_stop=self.t_stop, units=qt.ms)
                 for gid in self.gids
             ]
@@ -354,11 +354,11 @@ class Simulation(RootedObject):
         for i, neuron in enumerate(self.gids):
             neuron_sts.append(self.seeds[0].get_neo_spike_trains()[i].merge(
                 *[seed.get_neo_spike_trains()[i] for seed in self.seeds[1:]]
-            ))
+            ))  # merge sts for computational ease
         return nrc.poisson_generation.retrieve_fr_profile_from_sts(
             neuron_sts,
             elephant.kernels.GaussianKernel(sigma * qt.ms)
-        ).T
+        ).T / len(self.seeds)  # average
 
     @classmethod
     def from_firing_rate_profiles(cls, firing_rate_profiles: neo.AnalogSignal, repetitions: int,

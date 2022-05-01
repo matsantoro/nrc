@@ -8,7 +8,7 @@ import numpy as np
 def retrieve_fr_profile_from_sts(spike_trains_list: List[neo.SpikeTrain], kernel: elephant.kernels.Kernel,):
     """
     Firing rate profiles from spike trains objects.
-    :param spike_trains_list: list of eno.SpikeTrains objects, one per neuron.
+    :param spike_trains_list: list of neo.SpikeTrains objects, one per neuron.
     :param kernel: kernel to use.
     :return: istantaneous rate of all neurons.
     """

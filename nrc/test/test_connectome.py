@@ -182,60 +182,8 @@ class TestSimulationInstance(GenericConnectomeTest):
         s = Simulation(target, [example_sts]*3, gids=self.example_gids)
         firing_rates = s.average_firing_rate_profiles(10)
         s1 = Simulation.from_firing_rate_profiles(firing_rate_profiles=firing_rates,
-                                                  repetitions=5, seeds=0, root_path=target1, gids=self.example_gids)
-        self.assertTrue(np.all((s.average_firing_rate_profiles(10) - s1.average_firing_rate_profiles(10)) < 10**-6))
-
-
-class TestSimulationInstance(GenericConnectomeTest):
-    def test_items_accessible(self):
-        target = test_data_path / "sim1"
-        self.unlink_targets.append(target)
-        example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
-                                  self.example_t_stop, self.example_gids)
-        s = Simulation(target, [example_sts]*3)
-
-        self.assertTrue(len(s.seeds) == 3)
-        self.assertTrue(np.all(s.seeds[0].spikes_array == example_sts.spikes_array))
-        self.assertTrue(type(s.seeds[0]) == SpikeTrainsCollection)
-
-    def test_uninitalized_item_is_loaded(self):
-        target = test_data_path / "sim2"
-        self.unlink_targets.append(target)
-        example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
-                                  self.example_t_stop, self.example_gids)
-        s = Simulation(target, [example_sts]*3)
-        s1 = Simulation(target)
-        self.assertTrue(np.all(s.seeds[0].spikes_array == s1.seeds[1].spikes_array))
-        self.assertTrue(s.seeds[0].root_path == s1.seeds[0].root_path)
-
-    def test_average_firing_rates(self):
-        target = test_data_path / "sim3"
-        self.unlink_targets.append(target)
-        example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
-                                            self.example_t_stop, self.example_gids)
-        s = Simulation(target, [example_sts]*3)
-        self.assertTrue(np.all(s.average_firing_rate() == np.array([4, 4, 0, 0, 0]) / (2 * qt.s)))
-
-    def test_average_firing_rate_profile(self):
-        target = test_data_path / "sim4"
-        self.unlink_targets.append(target)
-        example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
-                                            self.example_t_stop, self.example_gids)
-        s = Simulation(target, [example_sts]*3, gids=self.example_gids)
-        self.assertEqual(s.average_firing_rate_profiles(10).shape, (5, 2000))
-
-    def test_from_firing_rate_profile(self):
-        target = test_data_path / "sim5"
-        target1 = test_data_path / "sim6"
-        self.unlink_targets.append(target)
-        self.unlink_targets.append(target1)
-        example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
-                                            self.example_t_stop, self.example_gids)
-        s = Simulation(target, [example_sts]*3, gids=self.example_gids)
-        firing_rates = s.average_firing_rate_profiles(10)
-        s1 = Simulation.from_firing_rate_profiles(firing_rate_profiles=firing_rates,
-                                                  repetitions=5, seeds=0, root_path=target1, gids=self.example_gids)
-        self.assertTrue(np.all((s.average_firing_rate_profiles(10) - s1.average_firing_rate_profiles(10)) < 10**-6))
+                                                  repetitions=3, seeds=0, root_path=target1, gids=self.example_gids)
+        self.assertTupleEqual(s1.average_firing_rate_profiles(10).shape, s.average_firing_rate_profiles(10).shape)
 
 
 class TestTribeView(GenericConnectomeTest):
