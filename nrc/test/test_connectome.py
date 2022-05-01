@@ -65,8 +65,8 @@ class TestConnectomeInstance(GenericConnectomeTest):
         self.unlink_targets.append(connectome_target_path)
         example_sts = SpikeTrainsCollection(None, self.example_st, self.example_t_start,
                                             self.example_t_stop, self.example_gids)
-        s = Simulation(None, [example_sts] * 3)
-        c = Connectome(connectome_target_path, self.example_connectome, self.example_ndata)
+        s = Simulation(None, [example_sts] * 3, gids=self.example_gids)
+        c = Connectome(connectome_target_path, self.example_connectome, self.example_ndata, gids=self.example_gids)
         c.simulations = [s]
         c1 = Connectome(connectome_target_path)
         self.assertTrue(len(c1.simulations) == 1)
