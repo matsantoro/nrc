@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import pickle
 from functools import wraps
@@ -39,7 +40,7 @@ def registry_property(property_name):
                 setattr(obj, '__' + p_name, value)
             else:
                 if obj.property_registry[p_name][2]():  # if there is data, warn the user
-                    print("Modifying existing file for property " + p_name)
+                    logging.info("Modifying existing file for property " + p_name)
                 obj.property_registry[p_name][1](value)  # store data
                 setattr(obj, '__' + p_name, obj.property_registry[p_name][0]())
         return _property_setter
@@ -76,24 +77,24 @@ def autosave_method(method: callable) -> callable:
         root_path = obj.root_path
         # check if it is possible to autosave.
         if not kwargs.get('autosave', True):
-            print("Autosave disabled.")
+            logging.info("Autosave disabled.")
             kwargs.pop('autosave')
             return method(*args, **kwargs)
         if root_path is None:  # if object is unrooted
-            print("Object is unrooted. Cannot save.")
+            logging.info("Object is unrooted. Cannot save.")
             return method(*args, **kwargs)
         if len(args) > 1:  # if not all arguments are specified by name.
-            print("Each argument must be explicitly stated to have autosave. " +
+            logging.info("Each argument must be explicitly stated to have autosave. " +
                   "Result of " + str(method.__name__) + " not saved")
             return method(*args, **kwargs)
         else:
             target_string = '_'.join([key + '_' + str(kwargs[key]) for key in sorted(kwargs)])
             target = root_path / (method.__name__ + '_' + target_string + '.pkl')  # autosave target
             if target.exists():  # if computation already occurred.
-                print("Target already computed. Retrieved from " + str(target))
+                logging.info("Target already computed. Retrieved from " + str(target))
                 return pickle.load(target.open('rb'))
             else:  # if computation did not occurr.
-                print("Target doesn't exist. Saving to " + str(target))
+                logging.info("Target doesn't exist. Saving to " + str(target))
                 res = method(*args, **kwargs)
                 pickle.dump(res, target.open('wb'))
                 return res

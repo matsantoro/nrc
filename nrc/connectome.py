@@ -3,6 +3,7 @@ from typing import Optional, Union, List, Dict
 from pathlib import Path
 
 import elephant.conversion
+import logging
 import multiprocessing
 import numpy as np
 import pandas as pd
@@ -739,7 +740,7 @@ class TribeView(RootedObject):
         :param method_name: name to use in saving the data
         """
         if self.root_path is not None:
-            print("Object unrooted")
+            logging.info("Object unrooted")
             self.unroot()
         if method_name is not None:
             method.__name__ = method_name
@@ -756,13 +757,13 @@ class TribeView(RootedObject):
                 if method.__name__ == method_name:
                     self.transform_method_list.pop(i)
                     if self.root_path is not None:
-                        print("object unrooted")
+                        logging.info("object unrooted")
                         self.unroot()
                     break
         else:
             self.transform_method_list.pop()
             if self.root_path is not None:
-                print("object unrooted")
+                logging.info("object unrooted")
                 self.unroot()
 
     def add_analysis(self, method: callable, method_name: Optional[str]):
@@ -848,11 +849,11 @@ class TribeView(RootedObject):
                 multiprocessing.Process(target=compute_for_chiefs, args=(vertices_to_do[chunk[0]:chunk[1]], mpqueue)))
             threads[-1].start()
             if not j % 10:
-                print('Updating partial results..' + str(j) + "/" + str(len(chunks)))
+                logging.info('Updating partial results..' + str(j) + "/" + str(len(chunks)))
                 self.analysis_data = self.analysis_data
                 self.analysis_data_error = self.analysis_data_error
             if chunk == chunks[-1]:
-                print("Assigned all targets.")
+                logging.info("Assigned all targets.")
                 for thread in threads:
                     thread.join()
                 while not mpqueue.empty():
