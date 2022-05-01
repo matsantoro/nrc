@@ -528,7 +528,8 @@ class Connectome(RootedObject):
         for i in range(len(lists)):
             bedge_array = np.zeros(len(lists[i]))
             for j in range(len(lists[i])):
-                bedge_array = int(np.sum(bedges[lists[i][j]][:, lists[i][j]])/2)
+                bedge_array[j] = int(np.sum(bedges[lists[i][j]][:, lists[i][j]])/2)
+                bedges_lists.append(bedge_array)
         return bedge_array
 
     def unroot(self):
